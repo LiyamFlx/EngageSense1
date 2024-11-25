@@ -15,9 +15,6 @@
     .container {
       padding: 20px;
     }
-    .hidden {
-      display: none;
-    }
     #results {
       display: flex;
       flex-wrap: wrap;
@@ -66,111 +63,131 @@
         <h3>Engagement Metrics Visualization</h3>
         <canvas id="barChart"></canvas>
         <canvas id="radarChart"></canvas>
-        <canvas id="lineChart"></canvas>
       </div>
 
-      <!-- Specific KPI Charts -->
-      <div>
-        <h3>Specific KPI Charts</h3>
-        <canvas id="mentalChart"></canvas>
-        <canvas id="emotionalChart"></canvas>
-        <canvas id="physicalChart"></canvas>
-        <canvas id="spiritualChart"></canvas>
-      </div>
-
-      <!-- Export Buttons -->
+      <!-- Export Button -->
       <div style="margin-top: 20px;">
         <h3>Export Results</h3>
-        <button onclick="exportResults('csv')">Export as CSV</button>
-        <button onclick="exportResults('pdf')">Export as PDF</button>
-        <button onclick="exportResults('excel')">Export as Excel</button>
+        <button onclick="exportToPDF()">Export as PDF</button>
       </div>
     </div>
   </div>
 
-  <!-- Include Chart.js -->
+  <!-- Include Chart.js and jsPDF -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
   <script>
     // Mock data
     const metrics = [
-      { type: "Mental Engagement", grades: [8.0, 8.2, 8.3, 8.1, 8.4], scores: [0.6, 0.61, 0.63, 0.62, 0.64] },
-      { type: "Emotional Engagement", grades: [7.0, 7.2, 7.3, 7.4, 7.5], scores: [0.5, 0.51, 0.53, 0.52, 0.54] },
-      { type: "Physical Engagement", grades: [6.0, 6.1, 6.2, 6.3, 6.5], scores: [0.45, 0.46, 0.47, 0.48, 0.50] },
-      { type: "Spiritual Engagement", grades: [5.0, 5.1, 5.2, 5.3, 5.4], scores: [0.35, 0.36, 0.37, 0.38, 0.39] }
+      { type: "Mental Engagement", grade: 8.0, threshold: 7.5 },
+      { type: "Emotional Engagement", grade: 7.2, threshold: 7.5 },
+      { type: "Physical Engagement", grade: 6.5, threshold: 7.5 },
+      { type: "Spiritual Engagement", grade: 5.8, threshold: 7.5 }
     ];
 
     // Populate KPI Cards
     const resultsDiv = document.getElementById('results');
     metrics.forEach(metric => {
+      const status = metric.grade >= metric.threshold ? "Good" : "Needs Improvement";
+      const color = metric.grade >= metric.threshold ? "green" : "red";
       resultsDiv.innerHTML += `
         <div class="result-card">
           <h3>${metric.type}</h3>
-          <p><strong>Latest Grade:</strong> ${metric.grades[metric.grades.length - 1]}</p>
-          <p><strong>Latest Score:</strong> ${metric.scores[metric.scores.length - 1]}</p>
+          <p><strong>Grade:</strong> ${metric.grade}</p>
+          <p style="color: ${color};"><strong>Status:</strong> ${status}</p>
         </div>
       `;
     });
 
-    // Initialize Charts
-    const labels = ["T1", "T2", "T3", "T4", "T5"];
-
-    // Bar Chart for Average Metrics
+    // Initialize Bar Chart with Tooltips
     const barCtx = document.getElementById('barChart').getContext('2d');
     new Chart(barCtx, {
       type: 'bar',
       data: {
         labels: metrics.map(m => m.type),
         datasets: [
-          { label: 'Average Grade', data: metrics.map(m => m.grades.reduce((a, b) => a + b) / m.grades.length), backgroundColor: 'rgba(75, 192, 192, 0.6)' },
-          { label: 'Average Score', data: metrics.map(m => m.scores.reduce((a, b) => a + b) / m.scores.length), backgroundColor: 'rgba(153, 102, 255, 0.6)' }
+          {
+            label: 'Engagement Grade',
+            data: metrics.map(m => m.grade),
+            backgroundColor: metrics.map(m => m.grade >= m.threshold ? 'rgba(75, 192, 192, 0.6)' : 'rgba(255, 99, 132, 0.6)'),
+            borderColor: metrics.map(m => m.grade >= m.threshold ? 'rgba(75, 192, 192, 1)' : 'rgba(255, 99, 132, 1)'),
+            borderWidth: 1
+          }
         ]
       },
-      options: { plugins: { legend: { position: 'top' }, title: { display: true, text: 'Engagement Metrics (Averages)' } } }
+      options: {
+        responsive: true,
+        plugins: {
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                const metric = metrics[context.dataIndex];
+                const status = metric.grade >= metric.threshold ? "Good" : "Needs Improvement";
+                return `Grade: ${metric.grade} (${status})`;
+              }
+            }
+          },
+          title: {
+            display: true,
+            text: 'Engagement Metrics with Threshold Alerts'
+          }
+        }
+      }
     });
 
-    // Radar Chart for Engagement Balance
+    // Initialize Radar Chart
     const radarCtx = document.getElementById('radarChart').getContext('2d');
     new Chart(radarCtx, {
       type: 'radar',
       data: {
         labels: metrics.map(m => m.type),
         datasets: [
-          { label: 'Engagement Balance', data: metrics.map(m => m.grades.reduce((a, b) => a + b) / m.grades.length), backgroundColor: 'rgba(54, 162, 235, 0.2)', borderColor: 'rgba(54, 162, 235, 1)' }
+          {
+            label: 'Engagement Grades',
+            data: metrics.map(m => m.grade),
+            backgroundColor: 'rgba(54, 162, 235, 0.2)',
+            borderColor: 'rgba(54, 162, 235, 1)'
+          }
         ]
       },
-      options: { plugins: { title: { display: true, text: 'Engagement Balance' } } }
+      options: {
+        responsive: true,
+        plugins: {
+          title: {
+            display: true,
+            text: 'Engagement Balance Across Metrics'
+          }
+        }
+      }
     });
 
-    // Line Chart for Trends
-    const lineCtx = document.getElementById('lineChart').getContext('2d');
-    new Chart(lineCtx, {
-      type: 'line',
-      data: {
-        labels,
-        datasets: metrics.map(m => ({
-          label: m.type,
-          data: m.grades,
-          fill: false,
-          borderColor: `rgba(${Math.floor(Math.random() * 255)}, ${Math.floor(Math.random() * 255)}, ${Math.floor(Math.random() * 255)}, 0.8)`
-        }))
-      },
-      options: { plugins: { title: { display: true, text: 'Engagement Trends' } } }
-    });
+    // Export Results to PDF
+    async function exportToPDF() {
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF();
 
-    // Specific KPI Charts
-    metrics.forEach((metric, i) => {
-      const kpiCtx = document.getElementById(`${metric.type.toLowerCase().replace(' ', '')}Chart`).getContext('2d');
-      new Chart(kpiCtx, {
-        type: 'line',
-        data: { labels, datasets: [{ label: metric.type, data: metric.grades, fill: false, borderColor: 'rgba(255, 99, 132, 0.8)' }] },
-        options: { plugins: { title: { display: true, text: `${metric.type} Trend` } } }
+      // Add title
+      pdf.setFontSize(16);
+      pdf.text('EngageSense Results', 10, 10);
+
+      // Add KPI Summary
+      let y = 20;
+      metrics.forEach(metric => {
+        pdf.text(`${metric.type}: Grade - ${metric.grade} (Threshold: ${metric.threshold})`, 10, y);
+        y += 10;
       });
-    });
 
-    // Export Results (mock implementation)
-    function exportResults(format) {
-      alert(`Exporting as ${format.toUpperCase()} coming soon!`);
+      // Export Charts
+      const barChartImage = document.getElementById('barChart').toDataURL('image/png');
+      pdf.addImage(barChartImage, 'PNG', 10, y, 180, 90);
+      y += 100;
+
+      const radarChartImage = document.getElementById('radarChart').toDataURL('image/png');
+      pdf.addImage(radarChartImage, 'PNG', 10, y, 180, 90);
+
+      // Save PDF
+      pdf.save('engagesense_results.pdf');
     }
   </script>
 </body>
