@@ -15,6 +15,17 @@
     .container {
       padding: 20px;
     }
+    .hidden {
+      display: none;
+    }
+    #upload-box, #record-box {
+      border: 2px dashed #ccc;
+      padding: 20px;
+      margin: 20px auto;
+      width: 80%;
+      max-width: 500px;
+      background: #fff;
+    }
     #results {
       display: flex;
       flex-wrap: wrap;
@@ -49,8 +60,31 @@
     <h1>EngageSense</h1>
     <p>Analyze audio files for engagement metrics.</p>
 
+    <!-- Welcome Screen -->
+    <div id="welcome-screen">
+      <h2>Welcome to EngageSense</h2>
+      <p>Analyze real-time crowd engagement metrics!</p>
+      <button onclick="showScreen('upload-screen')">Start</button>
+    </div>
+
+    <!-- Upload/Record Screen -->
+    <div id="upload-screen" class="hidden">
+      <div id="upload-box">
+        <h2>Upload an Audio File</h2>
+        <input type="file" id="audio-upload" accept="audio/*">
+        <button onclick="processFile()">Analyze Uploaded Audio</button>
+      </div>
+      <div id="record-box">
+        <h2>Record Audio</h2>
+        <button id="record-button" onclick="startRecording()">Start Recording</button>
+        <button id="stop-button" class="hidden" onclick="stopRecording()">Stop Recording</button>
+        <p id="record-status"></p>
+      </div>
+      <button onclick="showScreen('welcome-screen')">Back</button>
+    </div>
+
     <!-- Results Screen -->
-    <div id="results-screen">
+    <div id="results-screen" class="hidden">
       <h2>Analysis Results</h2>
       
       <!-- KPI Cards -->
@@ -70,6 +104,7 @@
         <h3>Export Results</h3>
         <button onclick="exportToPDF()">Export as PDF</button>
       </div>
+      <button onclick="showScreen('upload-screen')">Upload/Record Another</button>
     </div>
   </div>
 
@@ -78,6 +113,12 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
   <script>
+    // Navigation
+    function showScreen(screenId) {
+      document.querySelectorAll('.container > div').forEach(div => div.classList.add('hidden'));
+      document.getElementById(screenId).classList.remove('hidden');
+    }
+
     // Mock data
     const metrics = [
       { type: "Mental Engagement", grade: 8.0, threshold: 7.5 },
@@ -87,80 +128,59 @@
     ];
 
     // Populate KPI Cards
-    const resultsDiv = document.getElementById('results');
-    metrics.forEach(metric => {
-      const status = metric.grade >= metric.threshold ? "Good" : "Needs Improvement";
-      const color = metric.grade >= metric.threshold ? "green" : "red";
-      resultsDiv.innerHTML += `
-        <div class="result-card">
-          <h3>${metric.type}</h3>
-          <p><strong>Grade:</strong> ${metric.grade}</p>
-          <p style="color: ${color};"><strong>Status:</strong> ${status}</p>
-        </div>
-      `;
-    });
+    function populateResults() {
+      const resultsDiv = document.getElementById('results');
+      resultsDiv.innerHTML = '';
+      metrics.forEach(metric => {
+        const status = metric.grade >= metric.threshold ? "Good" : "Needs Improvement";
+        const color = metric.grade >= metric.threshold ? "green" : "red";
+        resultsDiv.innerHTML += `
+          <div class="result-card">
+            <h3>${metric.type}</h3>
+            <p><strong>Grade:</strong> ${metric.grade}</p>
+            <p style="color: ${color};"><strong>Status:</strong> ${status}</p>
+          </div>
+        `;
+      });
+    }
 
-    // Initialize Bar Chart with Tooltips
-    const barCtx = document.getElementById('barChart').getContext('2d');
-    new Chart(barCtx, {
-      type: 'bar',
-      data: {
-        labels: metrics.map(m => m.type),
-        datasets: [
-          {
-            label: 'Engagement Grade',
-            data: metrics.map(m => m.grade),
-            backgroundColor: metrics.map(m => m.grade >= m.threshold ? 'rgba(75, 192, 192, 0.6)' : 'rgba(255, 99, 132, 0.6)'),
-            borderColor: metrics.map(m => m.grade >= m.threshold ? 'rgba(75, 192, 192, 1)' : 'rgba(255, 99, 132, 1)'),
-            borderWidth: 1
-          }
-        ]
-      },
-      options: {
-        responsive: true,
-        plugins: {
-          tooltip: {
-            callbacks: {
-              label: function(context) {
-                const metric = metrics[context.dataIndex];
-                const status = metric.grade >= metric.threshold ? "Good" : "Needs Improvement";
-                return `Grade: ${metric.grade} (${status})`;
-              }
+    // Bar Chart Initialization
+    function initCharts() {
+      const barCtx = document.getElementById('barChart').getContext('2d');
+      new Chart(barCtx, {
+        type: 'bar',
+        data: {
+          labels: metrics.map(m => m.type),
+          datasets: [
+            {
+              label: 'Engagement Grade',
+              data: metrics.map(m => m.grade),
+              backgroundColor: metrics.map(m => m.grade >= m.threshold ? 'rgba(75, 192, 192, 0.6)' : 'rgba(255, 99, 132, 0.6)'),
+              borderColor: metrics.map(m => m.grade >= m.threshold ? 'rgba(75, 192, 192, 1)' : 'rgba(255, 99, 132, 1)'),
+              borderWidth: 1
             }
-          },
-          title: {
-            display: true,
-            text: 'Engagement Metrics with Threshold Alerts'
+          ]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  const metric = metrics[context.dataIndex];
+                  const status = metric.grade >= metric.threshold ? "Good" : "Needs Improvement";
+                  return `Grade: ${metric.grade} (${status})`;
+                }
+              }
+            },
+            title: {
+              display: true,
+              text: 'Engagement Metrics with Threshold Alerts'
+            }
           }
         }
-      }
-    });
-
-    // Initialize Radar Chart
-    const radarCtx = document.getElementById('radarChart').getContext('2d');
-    new Chart(radarCtx, {
-      type: 'radar',
-      data: {
-        labels: metrics.map(m => m.type),
-        datasets: [
-          {
-            label: 'Engagement Grades',
-            data: metrics.map(m => m.grade),
-            backgroundColor: 'rgba(54, 162, 235, 0.2)',
-            borderColor: 'rgba(54, 162, 235, 1)'
-          }
-        ]
-      },
-      options: {
-        responsive: true,
-        plugins: {
-          title: {
-            display: true,
-            text: 'Engagement Balance Across Metrics'
-          }
-        }
-      }
-    });
+      });
+    }
 
     // Export Results to PDF
     async function exportToPDF() {
@@ -181,13 +201,31 @@
       // Export Charts
       const barChartImage = document.getElementById('barChart').toDataURL('image/png');
       pdf.addImage(barChartImage, 'PNG', 10, y, 180, 90);
-      y += 100;
-
-      const radarChartImage = document.getElementById('radarChart').toDataURL('image/png');
-      pdf.addImage(radarChartImage, 'PNG', 10, y, 180, 90);
 
       // Save PDF
       pdf.save('engagesense_results.pdf');
+    }
+
+    // Simulate File Processing and Show Results
+    function processFile() {
+      alert("Mock Analysis Complete!");
+      showScreen('results-screen');
+      populateResults();
+      initCharts();
+    }
+
+    // Recording Audio (Mock Implementation)
+    function startRecording() {
+      alert("Recording started (mock)...");
+      document.getElementById('record-button').classList.add('hidden');
+      document.getElementById('stop-button').classList.remove('hidden');
+    }
+
+    function stopRecording() {
+      alert("Recording stopped (mock)...");
+      document.getElementById('record-button').classList.remove('hidden');
+      document.getElementById('stop-button').classList.add('hidden');
+      processFile();
     }
   </script>
 </body>
